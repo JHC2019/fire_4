@@ -4,9 +4,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:image/image.dart' as Img;
 import 'package:mlkit/mlkit.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:camera_camera/camera_camera.dart';
+
+import 'package:fire_4/widgets/focus_widget.dart';
+// import 'package:image_picker/image_picker.dart';
+// import 'package:image_cropper/image_cropper.dart';
 
 class VisionTextWidget extends StatefulWidget {
   @override
@@ -49,17 +54,45 @@ class _VisionTextWidgetState extends State<VisionTextWidget> {
 
   void ocr() async {
     try {
-      // var file = await ImagePicker.pickImage(source: ImageSource.gallery);
-      var file = await ImagePicker.pickImage(source: ImageSource.camera);
-      var file1 = await ImageCropper.cropImage(
-        sourcePath: file.path,
-        toolbarTitle: 'Cropper',
-        toolbarColor: Colors.blue,
-        toolbarWidgetColor: Colors.white,
+      File file = await showDialog(
+        context: context,
+        builder: (context) => Camera(
+              mode: CameraMode.fullscreen,
+              imageMask: FocusWidget(
+                color: Colors.black.withOpacity(0.5),
+              ),
+        ),
       );
-      if (file1 != null) {
+
+      Img.Image image = Img.decodeJpg(file.readAsBytesSync());
+      var w = image.width;
+      var h = image.height;
+      var ww = w/7;
+      var hh = h/4;
+      var w1 = (ww*3).toInt();
+      var w2 = ww.toInt();
+      var h1 = hh.toInt();
+      var h2 = (hh*2).toInt();
+      Img.Image trimmed = Img.copyCrop(image, w1, h1, w2, h2);
+
+      var time = DateTime.now().millisecondsSinceEpoch;
+      Directory tempDir = await getTemporaryDirectory();
+      String tempPath = tempDir.path;
+      File('$tempPath/$time.jpg').writeAsBytesSync(Img.encodeJpg(trimmed));
+
+      File tmp = File('$tempPath/$time.jpg');
+
+      // var file = await ImagePicker.pickImage(source: ImageSource.camera);
+
+      // var file1 = await ImageCropper.cropImage(
+      //   sourcePath: file.path,
+      //   toolbarTitle: 'Cropper',
+      //   toolbarColor: Colors.blue,
+      //   toolbarWidgetColor: Colors.white,
+      // );
+      if (tmp != null) {
         setState(() {
-          _file = file1;
+          _file = tmp;
         });
         try {
           var currentLabels = await detector.detectFromPath(_file?.path);
